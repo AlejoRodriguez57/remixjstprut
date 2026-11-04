@@ -9,10 +9,12 @@
     <script>
         // logica
 
-        const tablero_base = " x1nx2nx3nx4nx5nx6ny1 x1nx2nx3nx4nx5nx6ny2 x1nx2nx3nx4nx5nx6ny3 x1nx2nx3nx4nx5nx6ny4"
-        const lista_formas = []
-        const lista_formas_test = []
+        const tablero_base = " x1nx2nx3nx4nx5nx6ny1 x1nx2nx3nx4nx 5nx6ny2 x1nx2nx3nx4nx5nx6ny3 x1nx2nx3nx4nx5nx6ny4" // tamaño del tablero con sus casillas
+        const lista_formas = [] // arrey que almacena las formas como objetos
+        const lista_formas_test = [] // test de funcionalidades
 
+
+        // le asigna a cada casilla del tablero true o false con un 50% de probabilidad
         function generar_resultado(tablero_base) {
             let resultado = tablero_base.replace(/n/gi, () => {
             return Math.random() < 0.5 ? "t" : "f";
@@ -21,6 +23,7 @@
             return resultado
         }
 
+        // genera un objeto que contiene todos los valores de las casillas del tablero, se le editan esos valores cuando se quiere crear la forma
         function generar_forma(tablero_base) {
 
             const columnas = tablero_base.trim().split(/\s+/);
@@ -91,7 +94,7 @@
         }
 
 
-        // 3. Modificar una casilla desde el Canvas
+        // Busca en la forma y permite editar esos valores
         function cambiar_casilla(forma, y, x, valor) {
 
             const fila = forma.columnas.find(
@@ -105,7 +108,7 @@
             fila.celdas[x] = valor;
         }
 
-        // 4. Generar la cadena de texto de la forma
+        // En base al objeto de forma genera un texto que se utiliza para comparar figuras, con el mismo formato que el tablero_base
         function generar_cadena(forma) {
 
             return forma.columnas.map(columna => {
@@ -130,7 +133,7 @@
         }
 
 
-        // 5. Generar la expresión regular
+        // genera la exprecion que compara todas las formas con el tablero_basse
         function generar_regex(cadena) {
 
             const patron = cadena.replace(
@@ -201,6 +204,7 @@
     </script>
 
     <body>
+        // html basico que crea los 2 canvas layer, uno es para crear las formas y otro para generar el tablero
         <h2>Crear forma</h2>
         <canvas id="grid_formas"></canvas>
         <br>
