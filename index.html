@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+
+    <script>
+        // logica
+
+        const tablero_base = " x1nx2nx3nx4nx5nx6ny1 x1nx2nx3nx4nx5nx6ny2 x1nx2nx3nx4nx5nx6ny3 x1nx2nx3nx4nx5nx6ny4"
+        const lista_formas = []
+        const lista_formas_test = []
+
+        function generar_resultado(tablero_base) {
+            let resultado = tablero_base.replace(/n/gi, () => {
+            return Math.random() < 0.5 ? "t" : "f";
+            });
+
+            return resultado
+        }
+
+        function generar_forma(tablero_base) {
+
+            const columnas = tablero_base.trim().split(/\s+/);
+            const forma = {
+                columnas: []
+            };
+
+            let xReferencia = null;
+            const ysUtilizadas = new Set();
+
+            for (const columna of columnas) {
+
+                // Comprobar que la columna tenga el formato correcto
+                const coincidencia = columna.match(/^((?:x\d+[ntf])+)(y\d+)$/);
+
+                if (!coincidencia) {
+                    throw new Error("Formato de columna incorrecto: " + columna);
+                }
+
+                const contenido = coincidencia[1];
+                const y = coincidencia[2];
+
+                // Comprobar que no se repita ninguna columna
+                if (ysUtilizadas.has(y)) {
+                    throw new Error("Columna duplicada: " + y);
+                }
+
+                ysUtilizadas.add(y);
+
+                // Extraer las casillas
+                const expresion = /x(\d+)([ntf])/g;
+                const celdas = {};
+                const xActuales = [];
+
+                let resultado;
+
+                while ((resultado = expresion.exec(contenido)) !== null) {
+
+                    const x = "x" + resultado[1];
+                    const valor = resultado[2];
+
+                    if (Object.hasOwn(celdas, x)) {
+                        throw new Error("Casilla duplicada: " + x);
+                    }
+
+                    xActuales.push(x);
+
+                    // Convertir n, t y f en null, true y false
+                    celdas[x] = valor === "n" ? null : valor === "t";
+                }
+
+                // Comprobar que todas las columnas tengan las mismas X
+                if (xReferencia === null) {
+                    xReferencia = xActuales;
+                } else if (
+                    JSON.stringify(xReferencia) !== JSON.stringify(xActuales)
+                ) {
+                    throw new Error("Las columnas no tienen las mismas casillas X");
+                }
+
+                forma.columnas.push({
+                    y: y,
+                    celdas: celdas
+                });
+            }
+
+            return forma;
+        }
+
+
+        // 3. Modificar una casilla desde el Canvas
+        function cambiar_casilla(forma, y, x, valor) {
+
+            const fila = forma.columnas.find(
+                columna => columna.y === y
+            );
+
+            if (!fila || !(x in fila.celdas)) return;
+
+            if (valor !== null && typeof valor !== "boolean") return;
+
+            fila.celdas[x] = valor;
+        }
+
+        // 4. Generar la cadena de texto de la forma
+        function generar_cadena(forma) {
+
+            return forma.columnas.map(columna => {
+
+                let texto = "";
+
+                for (const [x, valor] of Object.entries(columna.celdas)) {
+
+                    let caracter = "n";
+
+                    if (valor === true) caracter = "t";
+                    if (valor === false) caracter = "f";
+
+                    texto += x + caracter;
+                }
+
+                texto += columna.y;
+
+                return texto;
+
+            }).join(" ");
+        }
+
+
+        // 5. Generar la expresión regular
+        function generar_regex(cadena) {
+
+            const patron = cadena.replace(
+                /(x\d+)([ntf])/g,
+                (coincidencia, x, valor) => {
+
+                    // Solo exigimos coincidencia en los true
+                    if (valor === "t") {
+                        return x + "t";
+                    }
+
+                    // Los demás valores pueden ser n, t o f
+                    return x + "[ntf]";
+                }
+            );
+
+            return new RegExp("^" + patron + "$");
+        }
+
+        function comparar(resultado, lista_formas) {
+
+            resultado = resultado.trim();
+
+            const coincidencias = [];
+
+            for (const forma of lista_formas) {
+
+                const cadena_forma = generar_cadena(forma);
+                const regex_forma = generar_regex(cadena_forma);
+
+                if (regex_forma.test(resultado)) {
+                    coincidencias.push(forma);
+                }
+            }
+
+            return coincidencias;
+        }
+
+        // test logica
+
+        console.log("Test generar resultado")
+        console.log(generar_resultado(tablero_base))
+        console.log("")
+        console.log(tablero_base)
+
+        console.log("Test generar forma")
+        console.log(generar_forma(tablero_base))
+        console.log("")
+        lista_formas_test.push(generar_forma(tablero_base));
+        console.log((lista_formas_test));
+
+        console.log("Test cambiar casilla")
+        cambiar_casilla(lista_formas_test[0], "y2", "x3", true);
+        console.log((lista_formas_test));
+        console.log(JSON.stringify(lista_formas_test));
+
+        console.log("Test generar cadena")
+        console.log(generar_cadena(lista_formas_test[0]));
+
+        console.log("Test generar cadena")
+        console.log(generar_cadena(lista_formas_test[0]));
+
+        console.log("Test generar exprecion regular")
+        console.log(generar_regex(generar_cadena(lista_formas_test[0])));
+
+        console.log("Test comparacion")
+        console.log(comparar(generar_resultado(tablero_base), lista_formas_test[0]))
+    </script>
+
+    <body>
+        <h2>Crear forma</h2>
+        <canvas id="grid_formas"></canvas>
+        <br>
+        <button id="añadir">Añadir forma</button>
+
+        <hr>
+
+        <h2>Tablero base / Resultado</h2>
+        <canvas id="grid_resultado"></canvas>
+        <br>
+        <button id="generar">Generar resultado</button>
+
+        <h3 id="estado_comparacion">Todavía no se ha generado ningún resultado.</h3>
+
+        <audio class="music"
+            src="https://manzdev.github.io/codevember2017/assets/eye-tiger.mp3">
+        </audio>
+        <script>
+            // ==========================================
+            // CONFIGURACIÓN DE LOS CANVAS
+            // ==========================================
+
+            const canvas_formas = document.getElementById("grid_formas");
+            const ctx_formas = canvas_formas.getContext("2d");
+
+            const canvas_resultado = document.getElementById("grid_resultado");
+            const ctx_resultado = canvas_resultado.getContext("2d");
+
+            const tamaño_celda = 50;
+            const margen_x = 40;
+            const margen_y = 30;
+
+
+            // ==========================================
+            // DIBUJAR CUALQUIER GRID
+            // ==========================================
+
+            function dibujar_grid(canvas, ctx, forma) {
+
+                const filas = forma.columnas;
+
+                if (filas.length === 0) return;
+
+                const xs = Object.keys(filas[0].celdas);
+
+                const ancho = xs.length * tamaño_celda;
+                const alto = filas.length * tamaño_celda;
+
+                canvas.width = margen_x + ancho + 5;
+                canvas.height = margen_y + alto + 5;
+
+                ctx.font = "14px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                // Etiquetas X
+                xs.forEach((x, i) => {
+
+                    ctx.fillStyle = "black";
+
+                    ctx.fillText(
+                        x,
+                        margen_x + i * tamaño_celda + tamaño_celda / 2,
+                        margen_y / 2
+                    );
+                });
+
+                // Filas
+                filas.forEach((fila, yIndex) => {
+
+                    ctx.fillStyle = "black";
+
+                    ctx.fillText(
+                        fila.y,
+                        margen_x / 2,
+                        margen_y + yIndex * tamaño_celda + tamaño_celda / 2
+                    );
+
+                    // Casillas
+                    xs.forEach((x, xIndex) => {
+
+                        const valor = fila.celdas[x];
+
+                        if (valor === true) {
+                            ctx.fillStyle = "green";
+                        } else if (valor === false) {
+                            ctx.fillStyle = "red";
+                        } else {
+                            ctx.fillStyle = "lightgray";
+                        }
+
+                        const px = margen_x + xIndex * tamaño_celda;
+                        const py = margen_y + yIndex * tamaño_celda;
+
+                        ctx.fillRect(
+                            px,
+                            py,
+                            tamaño_celda,
+                            tamaño_celda
+                        );
+
+                        ctx.strokeStyle = "black";
+                        ctx.lineWidth = 1;
+
+                        ctx.strokeRect(
+                            px,
+                            py,
+                            tamaño_celda,
+                            tamaño_celda
+                        );
+                    });
+                });
+            }
+
+
+            // ==========================================
+            // CREAR FORMA EDITABLE
+            // ==========================================
+
+            const forma_actual = generar_forma(tablero_base);
+
+            dibujar_grid(canvas_formas, ctx_formas, forma_actual);
+
+
+            // ==========================================
+            // DETECTAR CLICS EN EL GRID EDITABLE
+            // ==========================================
+
+            canvas_formas.addEventListener("click", function(event) {
+
+                const rect = canvas_formas.getBoundingClientRect();
+
+                const px = (event.clientX - rect.left) *
+                    (canvas_formas.width / rect.width);
+
+                const py = (event.clientY - rect.top) *
+                    (canvas_formas.height / rect.height);
+
+                const xIndex = Math.floor(
+                    (px - margen_x) / tamaño_celda
+                );
+
+                const yIndex = Math.floor(
+                    (py - margen_y) / tamaño_celda
+                );
+
+                const filas = forma_actual.columnas;
+
+                if (
+                    xIndex < 0 ||
+                    yIndex < 0 ||
+                    yIndex >= filas.length
+                ) return;
+
+                const xs = Object.keys(filas[0].celdas);
+
+                if (xIndex >= xs.length) return;
+
+                const x = xs[xIndex];
+                const y = filas[yIndex].y;
+
+                const valor_actual = filas[yIndex].celdas[x];
+
+                const nuevo_valor = valor_actual === true ? null : true;
+
+                cambiar_casilla(forma_actual, y, x, nuevo_valor);
+
+                dibujar_grid(canvas_formas, ctx_formas, forma_actual);
+            });
+
+
+            // ==========================================
+            // AÑADIR FORMA
+            // ==========================================
+
+            document.getElementById("añadir").addEventListener("click", () => {
+
+                const copia = structuredClone(forma_actual);
+
+                lista_formas.push(copia);
+
+                console.log("Forma añadida:", generar_cadena(copia));
+                console.log("Lista de formas:", lista_formas);
+            });
+
+
+            // ==========================================
+            // GRID DEL TABLERO BASE
+            // ==========================================
+
+            // Generar estructura del tablero original
+            const forma_tablero_base = generar_forma(tablero_base);
+
+            // Mostrar tablero base inicialmente
+            dibujar_grid(
+                canvas_resultado,
+                ctx_resultado,
+                forma_tablero_base
+            );
+
+
+            // ==========================================
+            // GENERAR RESULTADO Y COMPARAR
+            // ==========================================
+
+            document.getElementById("generar").addEventListener("click", () => {
+                const audio = document.querySelector(".music");
+
+                // 1. Generar resultado aleatorio
+                const resultado = generar_resultado(tablero_base);
+
+                // 2. Convertir resultado en una forma
+                const forma_resultado = generar_forma(resultado);
+
+                // 3. Dibujar resultado
+                dibujar_grid(
+                    canvas_resultado,
+                    ctx_resultado,
+                    forma_resultado
+                );
+
+                // 4. Comparar contra todas las formas guardadas
+                const coincidencias = comparar(resultado, lista_formas);
+
+                // 5. Mostrar resultado
+                const estado = document.getElementById("estado_comparacion");
+
+                if (coincidencias.length > 0) {
+
+                    estado.textContent =
+                        "¡Coincidencia! Se encontraron " +
+                        coincidencias.length +
+                        " formas coincidentes.";
+
+                    audio.play();
+
+                    console.log("Resultado generado:", resultado);
+                    console.log("Coincidencias:", coincidencias);
+
+                } else {
+
+                    estado.textContent =
+                        "No se encontró ninguna coincidencia.";
+
+                    console.log("Resultado generado:", resultado);
+                    console.log("No hay coincidencias.");
+                }
+
+            });
+        </script>
+    </body>
+</html>
